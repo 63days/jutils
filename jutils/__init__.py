@@ -1,3 +1,3 @@
-from . import imageutil, thutil, meshutil, sysutil, datautil, nputil, visutil, fresnelvis
+from . import imageutil, thutil, meshutil, sysutil, nputil, visutil, fresnelvis, fileutil
 
-__all__ = ["sysutil", "thutil", "meshutil", "imageutil", "datautil", "nputil", "visutil", "fresnelvis"]
+__all__ = ["sysutil", "thutil", "meshutil", "imageutil", "nputil", "visutil", "fresnelvis", "fileutil"]

@@ -3,7 +3,7 @@ import trimesh
 import matplotlib.pyplot as plt
 import mcubes
 import torch
-from jutils import *
+from jutils import fresnelvis, nputil, thutil
 from PIL import Image
 from typing import List
 
@@ -21,13 +21,13 @@ def plot(pc, lim=0.7, figsize=(10, 10)):
     return fig
 
 
-def make_grid(bb_min=[-1, -1, -1], bb_max=[1, 1, 1], shape=[64, 64, 64], flatten=True):
+def make_grid(bb_min=[-1, -1, -1], bb_max=[1, 1, 1], shapes=[64, 64, 64], flatten=True):
     coords = []
     bb_min = np.array(bb_min)
     bb_max = np.array(bb_max)
-    if type(shape) is int:
+    if type(shapes) is int:
         shape = np.array([shape] * bb_min.shape[0])
-    for i, si in enumerate(shape):
+    for i, si in enumerate(shapes):
         coord = np.linspace(bb_min[i], bb_max[i], si)
         coords.append(coord)
     grid = np.stack(np.meshgrid(*coords, sparse=False), axis=-1)
@@ -61,13 +61,49 @@ def render_grid(
         samples=16,
     ),
 ):
-    grid = ptutil.th2np(grid)
+    grid = thutil.th2np(grid)
     grid = grid.reshape(shapes)
     verts, faces = grid2mesh(grid, thresh)
     img = fresnelvis.renderMeshCloud(
         mesh={"vert": verts, "face": faces}, **camera_kwargs
     )
+    img = Image.fromarray(img)
     return img
+
+
+def plot_pointcloud(pointcloud, color=None):
+    pointcloud = thutil.th2np(pointcloud)
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection="3d")
+    # lim = 0.7
+    # ax.set_xlim(-lim, lim)
+    # ax.set_ylim(-lim, lim)
+    # ax.set_zlim(-lim, lim)
+
+    ax.scatter(
+        pointcloud[:, 0],
+        pointcloud[:, 2],
+        pointcloud[:, 1],
+        c=color if color is not None else None,
+    )
+
+    ax.axis("off")
+    return fig
+
+
+def render_pointcloud(
+    pointcloud,
+    camPos=np.array([2, 2, -2]),
+    camLookat=np.array([0.0, 0.0, 0.0]),
+    camUp=np.array([1, 0, 0]),
+    camHeight=2,
+    resolution=(512, 512),
+    samples=16,
+    cloudR=0.006,
+):
+    pointcloud = thutil.th2np(pointcloud)
+    img = fresnelvis.renderMeshCloud(cloud=pointcloud, camPos=camPos, camLookat=camLookat, camUp=camUp, camHeight=camHeight, resolution=resolution, samples=samples, cloudR=cloudR)
+    return Image.fromarray(img)
 
 
 def plot_gaussians(
@@ -121,13 +157,13 @@ def plot_gaussians(
 
 def render_gaussians(
     gaussians,
-    is_bspnet,
+    is_bspnet=False,
     multiplier=1.0,
     gaussians_colors=None,
     attn_map=None,
     camera_kwargs=None,
 ):
-    gaussians = ptutil.th2np(gaussians)
+    gaussians = thutil.th2np(gaussians)
     N = gaussians.shape[0]
     cmap = plt.get_cmap("jet")
 
@@ -179,41 +215,3 @@ def render_gaussians(
         )
     image = renderer.render()
     return Image.fromarray(image)
-
-
-def stack_images_horizontally(images: List, save_path=None):
-    widths, heights = list(zip(*(i.size for i in images)))
-    total_width = sum(widths)
-    max_height = max(heights)
-    new_im = Image.new("RGBA", (total_width, max_height))
-
-    x_offset = 0
-    for im in images:
-        new_im.paste(im, (x_offset, 0))
-        x_offset += im.size[0]
-    if save_path is not None:
-        new_im.save(save_path)
-    return new_im
-
-
-def stack_images_vertically(images: List, save_path=None):
-    widths, heights = list(zip(*(i.size for i in images)))
-    max_width = max(widths)
-    total_height = sum(heights)
-    new_im = Image.new("RGBA", (max_width, total_height))
-
-    y_offset = 0
-    for im in images:
-        new_im.paste(im, (0, y_offset))
-        y_offset += im.size[1]
-    if save_path is not None:
-        new_im.save(save_path)
-    return new_im
-
-
-def merge_images(images: List):
-    if isinstance(images[0], Image.Image):
-        return stack_images_horizontally(images)
-
-    images = list(map(stack_images_horizontally, images))
-    return stack_images_vertically(images)

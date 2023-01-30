@@ -202,7 +202,6 @@ def renderMeshCloud(mesh=None, meshC=gray_color, mesh_outline_width=None, meshfl
                         lights="rembrandt", **kwargs):
     camera_opt = dict(resolution=resolution, samples=samples, \
         camPos=camPos, camLookat=camLookat, camUp=camUp, camHeight=camHeight)
-    
     renderer = FresnelRenderer(lights=lights, camera_kwargs=camera_opt)
     if axes == True:
         renderer.addAxes()

@@ -1,8 +1,11 @@
 import rich.syntax
+import argparse
+import PIL
 import gc
 import torch
 import rich.tree
 from omegaconf import DictConfig, OmegaConf
+import wandb
 
 def print_config(
     config,
@@ -47,3 +50,34 @@ def print_config(
 def clean_gpu():
     gc.collect()
     torch.cuda.empty_cache()
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def wandb_log(wandb_on: bool, dic: dict):
+    if not wandb_on:
+        return
+
+    wandb.log(dic)
+
+def wandb_log_image(wandb_on: bool, log_name: str, images: dict):
+    if not wandb_on:
+        return 
+
+    if isinstance(images, PIL.Image.Image):
+        images = [wandb.Image(images)]
+    elif isinstance(images, wandb.Image):
+        images = [images]
+    elif isinstance(images, list):
+        if isinstance(images[0], PIL.Image.Image):
+            images = [wandb.Image(x) for x in images]
+
+    wandb_log(wandb_on, {log_name: images})
+
