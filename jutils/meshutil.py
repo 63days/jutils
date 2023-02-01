@@ -2,6 +2,26 @@ import trimesh
 import numpy as np
 from jutils import nputil, thutil
 
+def write_obj_triangle(name: str, vertices: np.ndarray, triangles: np.ndarray):
+	fout = open(name, 'w')
+	for ii in range(len(vertices)):
+		fout.write("v "+str(vertices[ii,0])+" "+str(vertices[ii,1])+" "+str(vertices[ii,2])+"\n")
+	for ii in range(len(triangles)):
+		fout.write("f "+str(triangles[ii,0]+1)+" "+str(triangles[ii,1]+1)+" "+str(triangles[ii,2]+1)+"\n")
+	fout.close()
+
+
+def write_obj_polygon(name: str, vertices: np.ndarray, polygons: np.ndarray):
+	fout = open(name, 'w')
+	for ii in range(len(vertices)):
+		fout.write("v "+str(vertices[ii][0])+" "+str(vertices[ii][1])+" "+str(vertices[ii][2])+"\n")
+	for ii in range(len(polygons)):
+		fout.write("f")
+		for jj in range(len(polygons[ii])):
+			fout.write(" "+str(polygons[ii][jj]+1))
+		fout.write("\n")
+	fout.close()
+
 def scene_as_mesh(scene_or_mesh):
     if isinstance(scene_or_mesh, trimesh.Scene):
         if len(scene_or_mesh.geometry) == 0:
