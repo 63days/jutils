@@ -161,7 +161,12 @@ def render_gaussians(
     multiplier=1.0,
     gaussians_colors=None,
     attn_map=None,
-    camera_kwargs=None,
+    camPos=np.array([-2,2,-2]),
+    camLookat=np.array([0.,0,0]),
+    camUp=np.array([0,1,0]),
+    camHeight=2,
+    resolution=(512,512),
+    samples=16,
 ):
     gaussians = thutil.th2np(gaussians)
     N = gaussians.shape[0]
@@ -176,19 +181,14 @@ def render_gaussians(
             normalized_attn_map = (attn_map - vmin) / (vmax - vmin)
 
         cmap = plt.get_cmap("viridis")
-    camera_kwargs = (
-        camera_kwargs
-        if camera_kwargs is not None
-        else dict(
-            camPos=np.array([-2, 2, -2]),
-            camLookat=np.array([0.0, 0.0, 0.0]),
-            camUp=np.array([0, 1, 0]),
-            camHeight=2,
-            resolution=(512, 512),
-            samples=16,
-        )
-    )
+
     lights = "rembrandt"
+    camera_kwargs = dict(camPos=camPos,
+            camLookat=camLookat,
+            camUp=camUp,
+            camHeight=camHeight,
+            resolution=resolution,
+            samples=samples)
     renderer = fresnelvis.FresnelRenderer(lights=lights, camera_kwargs=camera_kwargs)
     for i, g in enumerate(gaussians):
         if is_bspnet:
