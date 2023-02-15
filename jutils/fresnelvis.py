@@ -206,7 +206,7 @@ def renderMeshCloud(mesh=None, meshC=gray_color, mesh_outline_width=None, meshfl
     if axes == True:
         renderer.addAxes()
     if bbox == True:
-        renderer.addBBox()
+        renderer.add_bbox()
     if mesh is not None and mesh['vert'].shape[0]>0:
         renderer.add_mesh(mesh["vert"], mesh["face"], color=meshC, outline_width=mesh_outline_width)
     if cloud is not None and cloud.shape[0]>0:

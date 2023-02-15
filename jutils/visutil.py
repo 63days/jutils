@@ -93,16 +93,49 @@ def plot_pointcloud(pointcloud, color=None):
 
 def render_pointcloud(
     pointcloud,
-    camPos=np.array([2, 2, -2]),
+    camPos=np.array([-2, 2, -2]),
     camLookat=np.array([0.0, 0.0, 0.0]),
-    camUp=np.array([1, 0, 0]),
+    camUp=np.array([0, 1, 0]),
     camHeight=2,
     resolution=(512, 512),
     samples=16,
     cloudR=0.006,
 ):
     pointcloud = thutil.th2np(pointcloud)
-    img = fresnelvis.renderMeshCloud(cloud=pointcloud, camPos=camPos, camLookat=camLookat, camUp=camUp, camHeight=camHeight, resolution=resolution, samples=samples, cloudR=cloudR)
+    img = fresnelvis.renderMeshCloud(
+        cloud=pointcloud,
+        camPos=camPos,
+        camLookat=camLookat,
+        camUp=camUp,
+        camHeight=camHeight,
+        resolution=resolution,
+        samples=samples,
+        cloudR=cloudR,
+    )
+    return Image.fromarray(img)
+
+
+def render_mesh(
+    vert,
+    face,
+    camPos=np.array([-2, 2, -2]),
+    camLookat=np.array([0, 0, 0.0]),
+    camUp=np.array([0, 1, 0]),
+    camHeight=2,
+    resolution=(512, 512),
+    samples=16,
+):
+    vert, face = list(map(lambda x: thutil.th2np(x), [vert, face]))
+    mesh = {"vert": vert, "face": face}
+    img = fresnelvis.renderMeshCloud(
+        mesh=mesh,
+        camPos=camPos,
+        camLookat=camLookat,
+        camUp=camUp,
+        camHeight=camHeight,
+        resolution=resolution,
+        samples=samples, 
+    )
     return Image.fromarray(img)
 
 
@@ -161,11 +194,11 @@ def render_gaussians(
     multiplier=1.0,
     gaussians_colors=None,
     attn_map=None,
-    camPos=np.array([-2,2,-2]),
-    camLookat=np.array([0.,0,0]),
-    camUp=np.array([0,1,0]),
+    camPos=np.array([-2, 2, -2]),
+    camLookat=np.array([0.0, 0, 0]),
+    camUp=np.array([0, 1, 0]),
     camHeight=2,
-    resolution=(512,512),
+    resolution=(512, 512),
     samples=16,
 ):
     gaussians = thutil.th2np(gaussians)
@@ -183,12 +216,14 @@ def render_gaussians(
         cmap = plt.get_cmap("viridis")
 
     lights = "rembrandt"
-    camera_kwargs = dict(camPos=camPos,
-            camLookat=camLookat,
-            camUp=camUp,
-            camHeight=camHeight,
-            resolution=resolution,
-            samples=samples)
+    camera_kwargs = dict(
+        camPos=camPos,
+        camLookat=camLookat,
+        camUp=camUp,
+        camHeight=camHeight,
+        resolution=resolution,
+        samples=samples,
+    )
     renderer = fresnelvis.FresnelRenderer(lights=lights, camera_kwargs=camera_kwargs)
     for i, g in enumerate(gaussians):
         if is_bspnet:

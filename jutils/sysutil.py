@@ -1,4 +1,5 @@
 import rich.syntax
+import pytorch_lightning as pl
 import argparse
 import PIL
 import gc
@@ -81,3 +82,8 @@ def wandb_log_image(wandb_on: bool, log_name: str, images: dict):
 
     wandb_log(wandb_on, {log_name: images})
 
+def get_wandb_logger(pl_module):
+    for logger in pl_module.logger:
+        if isinstance(logger, pl.loggers.wandb.WandbLogger):
+            return logger
+    return None

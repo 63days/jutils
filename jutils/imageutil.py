@@ -49,7 +49,7 @@ def merge_images(images: List):
 
 
 def draw_text(
-    image: PIL.Image, text: str, font_size=None, font_color=(0, 0, 0), max_seq_length=20
+    image: PIL.Image, text: str, font_size=None, font_color=(0, 0, 0), max_seq_length=100
 ):
     W, H = image.size
     S = max(W, H)
