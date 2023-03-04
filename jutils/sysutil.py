@@ -1,4 +1,5 @@
 import rich.syntax
+from datetime import datetime
 import pytorch_lightning as pl
 import argparse
 import PIL
@@ -87,3 +88,7 @@ def get_wandb_logger(pl_module):
         if isinstance(logger, pl.loggers.wandb.WandbLogger):
             return logger
     return None
+
+def get_current_time():
+    now = datetime.now().strftime("%m-%d-%H%M%S")
+    return now

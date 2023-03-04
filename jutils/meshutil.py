@@ -165,3 +165,10 @@ def sample_on_mesh(mesh, num_samples: int, face_areas = None,
         samples = torch.einsum('sf,sfd->sd', uvw, vs[chosen_faces])
     return samples, chosen_faces_inds, uvw
 
+def repair_normals(v, f):
+    mesh = trimesh.Trimesh(v, f)
+    trimesh.repair.fix_normals(mesh)
+    v = mesh.vertices
+    f = np.asarray(mesh.faces)
+    return v, f
+
