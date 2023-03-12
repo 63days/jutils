@@ -1,3 +1,6 @@
+from trimesh.visual.color import colorsys
+
+
 try:
     import matplotlib.pyplot as plt
     from typing import Union, Tuple
@@ -22,6 +25,7 @@ try:
     import jutils.meshutil
     
     gray_color = np.ones(3) * 0.45
+    selec_color = np.array([0.65882353, 0.21960784, 0.19607843])
     render_colors = {
         "chair": np.array([96, 153, 102]) / 255,
         "airplane": np.array([176, 139, 187]) / 255,
@@ -179,6 +183,46 @@ try:
         mesh_params.update()
         return mimesh
 
+    def vf2mimesh_vertex_color(v, f, color=0.45):
+        vert_bsdf = mi.load_dict({
+            "type": "diffuse",
+            "reflectance": {
+                "type": "mesh_attribute",
+                "name": "vertex_color",
+            },
+        })
+        props = mi.Properties()
+        props["vertex_bsdf"] = vert_bsdf
+
+
+        mimesh = mi.Mesh("mymesh",
+            vertex_count=v.shape[0],
+            face_count=f.shape[0],
+            has_vertex_normals=False,
+            has_vertex_texcoords=False,
+            props=props
+        )
+        mimesh.add_attribute("vertex_color", 3,
+                             [0] * (v.shape[0] * 3))
+        
+        if isinstance(color, float):
+            mask_color = np.ones((v.shape[0], 3)) * color
+        elif isinstance(color, list):
+            mask_color = np.array(mask_color)
+        else:
+            mask_color = color
+        # mask_color = np.zeros((v.shape[0], 3))
+        # mask_color[:] = color
+        # mask_color[v_mask] = select_color
+
+        mesh_params = mi.traverse(mimesh)
+        mesh_params["vertex_positions"] = np.ravel(v)
+        mesh_params["vertex_color"] = np.ravel(mask_color)
+        mesh_params["faces"] = np.ravel(f)
+        mesh_params.update()
+
+        return mimesh
+
     def vf2bbox(v, f, color):
         bsdf = mi.load_dict({
             'type': 'roughdielectric',
@@ -204,6 +248,55 @@ try:
         mesh_params.update()
 
         return mimesh
+
+    def render_mesh_vertex_color(
+        v: Union[np.ndarray, torch.Tensor],
+        f: Union[np.ndarray, torch.Tensor],
+        color: Union[int, np.ndarray] = 0.45,
+        bbox: Tuple =None,
+        bbox_color=np.array([0.53, 0.68, 0.92]),
+        normalize=None,
+        camR=10,
+        camPhi=45,
+        camTheta=60,
+        resolution=(512, 512),
+        floor=True,
+        **scene_kwargs,
+        ):
+        clean_cache()
+        scene_dict = get_scene_dict(**scene_kwargs, floor=floor)
+
+        v = jutils.thutil.th2np(v)
+        f = jutils.thutil.th2np(f)
+        if normalize is not None:
+            v = jutils.pcutil.normalize_points(v, normalize)
+        v = to_mitsuba_coord(v)
+        # scene_dict["mesh"] = vf2mimesh(v,f, color)
+        scene_dict["mesh"] = vf2mimesh_vertex_color(v, f, color)
+
+        """
+        bbox 
+        """
+        if bbox is not None:
+            try:
+                bv, bf = jutils.meshutil.read_obj("/home/juil/docker_home/salad/primitive_objs/cube.obj")
+            except:
+                bv, bf = jutils.meshutil.read_obj("/home/juil/salad/primitive_objs/cube.obj")
+        
+            minbb, maxbb = bbox
+            transbb = (maxbb + minbb) / 2
+            scalebb = (maxbb - minbb) / 2
+            bv = (bv * scalebb) + transbb
+            bv = to_mitsuba_coord(bv)
+            scene_dict['bbox'] = vf2bbox(bv, bf, bbox_color)
+
+        scene = mi.load_dict(scene_dict)
+        sensor = get_sensor(camR, camPhi, camTheta, resolution)
+
+        render = mi.render(scene, spp=1000, sensor=sensor)
+        return render
+
+
     def render_mesh(
         v: Union[np.ndarray, torch.Tensor],
         f: Union[np.ndarray, torch.Tensor],
@@ -215,10 +308,11 @@ try:
         camPhi=45,
         camTheta=60,
         resolution=(512, 512),
+        floor=True,
         **scene_kwargs,
     ):
         clean_cache()
-        scene_dict = get_scene_dict(**scene_kwargs)
+        scene_dict = get_scene_dict(**scene_kwargs, floor=floor)
 
         v = jutils.thutil.th2np(v)
         f = jutils.thutil.th2np(f)
@@ -252,14 +346,20 @@ try:
         return img
 
     def write_img(img, path):
-        mi.util.write_bitmap(path, img)
+        mi.util.write_bitmap(str(path), img)
 
+    def load_and_process_mesh(path):
+        v, f = jutils.meshutil.read_obj(path)
+        v, f = jutils.meshutil.repair_normals(v, f )
+        v = jutils.pcutil.normalize_points(v, "cube")
+        return v, f
     def render_gaussians(gaussians, color=0.45, cmap=None, use_cmap=False,
                     transform=lambda x: x,
-                    camR=10, camPhi=45, camTheta=60, camRes=(512,512),
+                    camR=10, camPhi=45, camTheta=60, camRes=(512,512), floor=True,
+                    darken=False,
                     **scene_kwargs):
         clean_cache()
-        scene_dict = get_scene_dict(**scene_kwargs)
+        scene_dict = get_scene_dict(**scene_kwargs, floor=floor)
         # cmap = plt.get_cmap("plasma")
         if isinstance(cmap, str):
             try:
@@ -292,15 +392,21 @@ try:
             v, f = np.array(mesh.vertices), np.array(mesh.faces)
             if use_cmap:
                 c = np.array(cmap(i / N)[:3])
-            
-            if isinstance(color, (list, np.ndarray, torch.Tensor)):
-                c = color[i]
             else:
-                c = color
+                if isinstance(color, (list, np.ndarray, torch.Tensor)):
+                    c = color[i]
+                else:
+                    c = color
+            if darken:
+                c = darken_color(c)
             scene_dict[f'point_{i}'] = vf2mimesh(v, f, c)
 
         scene = mi.load_dict(scene_dict)
         sensor = get_sensor(camR, camPhi, camTheta, camRes)
         return mi.render(scene, spp=1000, sensor=sensor) 
+
+    def darken_color(c):
+        h, l, s = colorsys.rgb_to_hls(*c)
+        return colorsys.hls_to_rgb(h, min(1, l * 0.5), s=s)
 except:
     pass

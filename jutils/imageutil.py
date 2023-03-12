@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 import os
 import PIL
@@ -341,3 +342,91 @@ def create_image_table_tight_centering_per_col(
         print("Saved '{}'.".format(out_img_file))
 
     return width, row_height
+
+def create_image_table_after_crop(
+    in_img_files, out_img_file, lbox=None, tbox=None, rbox=None, dbox=None, max_total_width=2560, draw_col_lines=[], transpose=False, verbose=False,
+    line_multi=None,
+):
+    out_img_file = str(out_img_file)
+    if not isinstance(in_img_files[0], list):
+        in_img_files = [in_img_files]
+    in_img_files = [[x for x in row if len(str(x)) != 0] for row in in_img_files]
+    if transpose:
+        x = np.array(in_img_files)
+        in_img_files = x.transpose().tolist()
+
+    n_rows = len(in_img_files)
+    n_cols = len(in_img_files[0])
+
+    # Compute width and height of each image.
+    width = 0
+    row_top = [float("Inf")] * n_rows
+    row_bottom = [-float("Inf")] * n_rows
+
+    for row in range(n_rows):
+        for col in range(n_cols):
+            img_left, img_top, img_right, img_bottom = get_bbox(in_img_files[row][col])
+            # img_left, img_top, img_right, img_bottom = lbox, tbox, rbox, dbox
+            img_left = img_left if lbox is None else lbox
+            img_top = img_top if tbox is None else tbox
+            img_right = img_right if rbox is None else rbox
+            img_bottom = img_bottom if dbox is None else dbox
+            img_width = img_right - img_left
+            width = max(width, img_width)
+            row_top[row] = min(row_top[row], img_top)
+            row_bottom[row] = max(row_bottom[row], img_bottom)
+
+    row_height = [bottom - top for bottom, top in zip(row_bottom, row_top)]
+
+    # Combine images.
+    cmd = "convert "
+    for row in range(n_rows):
+        cmd += " \( "
+        for col in range(n_cols):
+            # img_left, img_top, img_right, img_bottom = lbox, tbox, rbox, dbox
+            img_left, img_top, img_right, img_bottom = get_bbox(in_img_files[row][col])
+            img_left = img_left if lbox is None else lbox
+            img_top = img_top if tbox is None else tbox
+            img_right = img_right if rbox is None else rbox
+            img_bottom = img_bottom if dbox is None else dbox
+            img_h_center = 0.5 * (img_left + img_right)
+            left = int(img_h_center - 0.5 * width)
+            cmd += " \( {} ".format(in_img_files[row][col])
+            cmd += "-gravity NorthWest -crop {}x{}+{}+{} +repage \) ".format(
+                width, row_height[row], left, row_top[row]
+            )
+        cmd += " -gravity center -background white +append \) "
+
+    cmd += "-append " + out_img_file
+    if verbose:
+        print(cmd)
+    os.system(cmd)
+    # Draw lines for columns.
+    for col in draw_col_lines:
+        if col <= 0 or col >= n_cols:
+            continue
+        strokewidth = max(int(round(width * 0.005)), 1)
+        if line_multi is not None:
+            strokewidth *= line_multi
+        pos = col * width
+        cmd = "convert " + out_img_file + " -stroke black "
+        cmd += "-strokewidth {} ".format(strokewidth)
+        cmd += '-draw "line {0},0 {0},10000000" '.format(pos) + out_img_file
+        if verbose:
+            print(cmd)
+        os.system(cmd)
+
+    # Resize the combined image if it is too large.
+    # print(n_cols * width)
+    # if (n_cols * width) > max_total_width:
+        # cmd = "convert {0} -resize {1}x +repage {0}".format(
+            # out_img_file, max_total_width
+        # )
+        # print(cmd)
+        # os.system(cmd)
+
+    print("Saved '{}'.".format(out_img_file))
+
+    return width, row_height
+
+
