@@ -4,41 +4,25 @@ import torch
 import numpy as np
 from jutils import nputil, thutil
 
-def write_obj(name: str, vertices: np.ndarray, faces: np.ndarray):
-    """
-    name: filename
-    vertices: (V,3)
-    faces: (F,3) Assume the mesh is a triangle mesh.
-    """
-    vertices = thutil.th2np(vertices)
-    faces = thutil.th2np(faces).astype(np.uint32)
-    fout = open(name, 'w')
-    for ii in range(len(vertices)):
-        fout.write("v "+str(vertices[ii,0])+" "+str(vertices[ii,1])+" "+str(vertices[ii,2])+"\n")
-    for ii in range(len(faces)):
-        fout.write("f "+str(faces[ii,0]+1)+" "+str(faces[ii,1]+1)+" "+str(faces[ii,2]+1)+"\n")
-    fout.close()
-    
-
 def write_obj_triangle(name: str, vertices: np.ndarray, triangles: np.ndarray):
-    fout = open(name, 'w')
-    for ii in range(len(vertices)):
-        fout.write("v "+str(vertices[ii,0])+" "+str(vertices[ii,1])+" "+str(vertices[ii,2])+"\n")
-    for ii in range(len(triangles)):
-        fout.write("f "+str(triangles[ii,0]+1)+" "+str(triangles[ii,1]+1)+" "+str(triangles[ii,2]+1)+"\n")
-    fout.close()
+	fout = open(name, 'w')
+	for ii in range(len(vertices)):
+		fout.write("v "+str(vertices[ii,0])+" "+str(vertices[ii,1])+" "+str(vertices[ii,2])+"\n")
+	for ii in range(len(triangles)):
+		fout.write("f "+str(triangles[ii,0]+1)+" "+str(triangles[ii,1]+1)+" "+str(triangles[ii,2]+1)+"\n")
+	fout.close()
 
 
 def write_obj_polygon(name: str, vertices: np.ndarray, polygons: np.ndarray):
-    fout = open(name, 'w')
-    for ii in range(len(vertices)):
-        fout.write("v "+str(vertices[ii][0])+" "+str(vertices[ii][1])+" "+str(vertices[ii][2])+"\n")
-    for ii in range(len(polygons)):
-        fout.write("f")
-        for jj in range(len(polygons[ii])):
-            fout.write(" "+str(polygons[ii][jj]+1))
-        fout.write("\n")
-    fout.close()
+	fout = open(name, 'w')
+	for ii in range(len(vertices)):
+		fout.write("v "+str(vertices[ii][0])+" "+str(vertices[ii][1])+" "+str(vertices[ii][2])+"\n")
+	for ii in range(len(polygons)):
+		fout.write("f")
+		for jj in range(len(polygons[ii])):
+			fout.write(" "+str(polygons[ii][jj]+1))
+		fout.write("\n")
+	fout.close()
 
 def read_obj(name: str):
     verts = []

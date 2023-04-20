@@ -72,7 +72,7 @@ try:
                     "rfilter": {
                         "type": "tent",
                     },
-                    "pixel_format": "rgba",
+                    "pixel_format": "rgb",
                 },
             }
         )
@@ -83,7 +83,6 @@ try:
         default_scene = {
             "type": "scene",
             "integrator": {"type": "path"},
-            # "integrator": {"type": "aov", 'aov':'a:albedo','my_image': {'type': 'path'}},
             "light": {"type": "constant", "radiance": 1.0},
         }
 
@@ -92,15 +91,15 @@ try:
         else:
             out_scene = default_scene
 
-        # if floor:
-            # out_scene["floor"] = {
-                # "type": "rectangle",
-                # "to_world": T.translate([0, 0, -2]).scale(100),
-                # "bsdf": {
-                    # "type": "diffuse",
-                    # "reflectance": {"type": "rgb", "value": 1.0},
-                # },
-            # }
+        if floor:
+            out_scene["floor"] = {
+                "type": "rectangle",
+                "to_world": T.translate([0, 0, -2]).scale(100),
+                "bsdf": {
+                    "type": "diffuse",
+                    "reflectance": {"type": "rgb", "value": 1.0},
+                },
+            }
 
         return out_scene
 
@@ -127,7 +126,7 @@ try:
                     "rfilter": {
                         "type": "box",
                     },
-                    "pixel_format": "rgba",
+                    "pixel_format": "rgb",
                 },
             }
         )
@@ -341,18 +340,13 @@ try:
         scene = mi.load_dict(scene_dict)
         sensor = get_sensor(camR, camPhi, camTheta, resolution)
 
-        render = mi.render(scene, spp=1000, sensor=sensor )
+        render = mi.render(scene, spp=1000, sensor=sensor)
         return render
         img = Image.fromarray(np.array(render))
         return img
 
     def write_img(img, path):
-        # mi.util.write_bitmap(str(path), img, )
-
-        img = mi.util.convert_to_bitmap(img)
-        img.write(str(path))
-        # mi.util.write_bitmap(str(path), img, )
-        # mi.util.write(str(path), img)
+        mi.util.write_bitmap(str(path), img)
 
     def load_and_process_mesh(path):
         v, f = jutils.meshutil.read_obj(path)

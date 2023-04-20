@@ -10,14 +10,7 @@ import textwrap
 
 kMinMargin = 10
 
-class JuilImage(Image.Image):
-    def __init__(self):
-        super().__init__()
 
-    def draw_text(self, text, **kwargs):
-        return draw_text(self, text, **kwargs)
-    
-# Image.Image = JuilImage
 def stack_images_horizontally(images: List, save_path=None):
     widths, heights = list(zip(*(i.size for i in images)))
     total_width = sum(widths)
@@ -351,13 +344,10 @@ def create_image_table_tight_centering_per_col(
     return width, row_height
 
 def create_image_table_after_crop(
-    in_img_files, out_img_file, lbox=None, tbox=None, rbox=None, dbox=None, max_total_width=2560, draw_col_lines=[], transpose=False, verbose=False,
-    line_multi=None,
+    in_img_files, out_img_file, lbox=None, tbox=None, rbox=None, dbox=None, max_total_width=2560, draw_col_lines=[], transpose=False
 ):
     out_img_file = str(out_img_file)
-    if not isinstance(in_img_files[0], list):
-        in_img_files = [in_img_files]
-    in_img_files = [[x for x in row if len(str(x)) != 0] for row in in_img_files]
+    in_img_files = [[x for x in row if len(x) != 0] for row in in_img_files]
     if transpose:
         x = np.array(in_img_files)
         in_img_files = x.transpose().tolist()
@@ -405,22 +395,19 @@ def create_image_table_after_crop(
         cmd += " -gravity center -background white +append \) "
 
     cmd += "-append " + out_img_file
-    if verbose:
-        print(cmd)
+    print(cmd)
     os.system(cmd)
+    print(width)
     # Draw lines for columns.
     for col in draw_col_lines:
         if col <= 0 or col >= n_cols:
             continue
         strokewidth = max(int(round(width * 0.005)), 1)
-        if line_multi is not None:
-            strokewidth *= line_multi
         pos = col * width
         cmd = "convert " + out_img_file + " -stroke black "
         cmd += "-strokewidth {} ".format(strokewidth)
         cmd += '-draw "line {0},0 {0},10000000" '.format(pos) + out_img_file
-        if verbose:
-            print(cmd)
+        print(cmd)
         os.system(cmd)
 
     # Resize the combined image if it is too large.
@@ -436,19 +423,4 @@ def create_image_table_after_crop(
 
     return width, row_height
 
-def make_2dgrid(input_list, num_rows=None, num_cols=None):
-    # if num_rows * num_cols != len(input_list):
-        # raise Warning("Number of rows and columns do not match the length of the input list.")
-    
-    if num_rows is None and num_cols is not None:
-        num_rows = len(input_list) // num_cols + 1
-    output_list = []
-    for i in range(num_rows):
-        row = []
-        for j in range(num_cols):
-            if i * num_cols + j >= len(input_list): break
-            row.append(input_list[i * num_cols + j])
-        output_list.append(row)
-
-    return output_list
 
