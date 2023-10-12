@@ -32,6 +32,11 @@ def stack_images_horizontally(images: List, save_path=None):
         new_im.save(save_path)
     return new_im
 
+def images2gif(images: List, save_path, optimize=True, duration=None, loop=0, disposal=2):
+    if duration is None:
+        duration = int(5000 / len(images))
+    images[0].save(save_path, save_all=True, append_images=images[1:],
+            optimize=optimize, duration=duration, loop=loop, disposal=disposal)
 
 def stack_images_vertically(images: List, save_path=None):
     widths, heights = list(zip(*(i.size for i in images)))

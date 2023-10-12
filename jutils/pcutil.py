@@ -3,7 +3,16 @@ import jutils
 import numpy as np
 import torch
 from typing import Sequence, Union
+import open3d as o3d
 
+
+def poisson_sampling(vert: np.array, face: np.array, num_points=2048):
+    vert_o3d = o3d.utility.Vector3dVector(vert)
+    face_o3d = o3d.utility.Vector3iVector(face)
+    mesh_o3d = o3d.geometry.TriangleMesh(vert_o3d, face_o3d)
+    pc_o3d = mesh_o3d.sample_points_poisson_disk(num_points)
+    pc = np.asarray(pc_o3d.points).astype(np.float32)
+    return pc
 
 def normalize_points(p, method: str="sphere"):
     if method == "sphere":

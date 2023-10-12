@@ -3,6 +3,7 @@ from enum import Enum
 import torch
 import numpy as np
 from jutils import nputil, thutil
+import jutils
 
 def write_obj(name: str, vertices: np.ndarray, faces: np.ndarray):
     """
@@ -188,3 +189,139 @@ def repair_normals(v, f):
     f = np.asarray(mesh.faces)
     return v, f
 
+
+###### Teomporal ######
+import matplotlib.pyplot as plt
+def get_gm_support(gm, x, ignore_phi=False):
+    dim = x.shape[-1]
+    mu, p, phi, eigen = gm
+    sigma_det = eigen.prod(-1)
+    eigen_inv = 1 / eigen
+    sigma_inverse = torch.matmul(p.transpose(3, 4), p * eigen_inv[:, :, :, :, None]).squeeze(1)
+    phi = torch.softmax(phi, dim=2)
+    if ignore_phi:
+        phi = torch.ones_like(phi)
+    const_1 = phi / torch.sqrt((2 * np.pi) ** dim * sigma_det)
+    distance = x[:, :, None, :] - mu
+    mahalanobis_distance = - .5 * torch.einsum('bngd,bgdc,bngc->bng', distance, sigma_inverse, distance)
+    const_2, _ = mahalanobis_distance.max(dim=2)  # for numeric stability
+    mahalanobis_distance -= const_2[:, :, None]
+    support = const_1 * torch.exp(mahalanobis_distance)
+    return support, const_2
+
+def get_gm_euclidean_support(gm, x):
+    dim = x.shape[-1]
+    mu, p, phi, eigen = gm
+    distance = x[:, :, None, :] - mu
+    
+    euc_distance = -(distance ** 2).sum(-1)
+
+    const_2, _ = euc_distance.max(dim=2)
+    euc_distance -= const_2[:, :, None]
+
+    return euc_distance, const_2
+    mahalanobis_distance = - .5 * torch.einsum('bngd,bgdc,bngc->bng', distance, sigma_inverse, distance)
+    const_2, _ = mahalanobis_distance.max(dim=2)  # for numeric stability
+    mahalanobis_distance -= const_2[:, :, None]
+    support = const_1 * torch.exp(mahalanobis_distance)
+    return support, const_2
+
+
+def gm_log_likelihood_loss(gms, x, get_supports: bool = False,
+                           mask = None, reduction: str = "mean", ignore_phi=False):
+
+    batch_size, num_points, dim = x.shape
+    support, const = get_gm_euclidean_support(gms, x)
+    probs = torch.log(support.sum(dim=2)) + const
+    if mask is not None:
+        probs = probs.masked_select(mask=mask.flatten())
+    if reduction == 'none':
+        likelihood = probs.sum(-1)
+        loss = - likelihood / num_points
+    else:
+        likelihood = probs.sum()
+        loss = - likelihood / (probs.shape[0] * probs.shape[1])
+    if get_supports:
+        return loss, support
+    return loss
+
+
+def split_mesh_by_gmm(mesh, gmm):
+    faces_split = {}
+    vs, faces = mesh
+    vs_mid_faces = vs[faces].mean(1)
+    _, supports = gm_log_likelihood_loss(gmm, vs_mid_faces.unsqueeze(0), get_supports=True)
+    supports = supports[0]
+    label = supports.argmax(1)
+    for i in range(gmm[1].shape[2]):
+        select = label.eq(i)
+        if select.any():
+            faces_split[i] = faces[select]
+        else:
+            faces_split[i] = None
+    return faces_split
+
+
+def flatten_gmm(gmm):
+    b, gp, g, _ = gmm[0].shape
+    mu, p, phi, eigen = [item.view(b, gp * g, *item.shape[3:]) for item in gmm]
+    p = p.reshape(*p.shape[:2], -1)
+    z_gmm = torch.cat((mu, p, phi.unsqueeze(-1), eigen), dim=2)
+    return z_gmm
+
+
+def flatten_gmms_item(x):
+    """
+    Input: [B,1,G,*shapes]
+    Output: [B,G,-1]
+    """
+    return x.reshape(x.shape[0], x.shape[2], -1)
+
+@torch.no_grad()
+def batch_gmms_to_gaus(gmms):
+    """
+    Input:
+        [T(B,1,G,3), T(B,1,G,3,3), T(B,1,G), T(B,1,G,3)]
+    Output:
+        T(B,G,16)
+    """
+    if isinstance(gmms[0], list):
+        gaus = gmms[0].copy()
+    else:
+        gaus = list(gmms).copy()
+    
+    gaus = [flatten_gmms_item(x) for x in gaus]
+    return torch.cat(gaus, -1)
+
+@torch.no_grad()
+def batch_gaus_to_gmms(gaus, device="cpu"):
+    """
+    Input: T(B,G,16)
+    Output: [mu: T(B,1,G,3), eivec: T(B,1,G,3,3), pi: T(B,1,G), eival: T(B,1,G,3)]
+    """
+    gaus = jutils.nputil.np2th(gaus).to(device)
+    if len(gaus.shape) < 3:
+        gaus = gaus.unsqueeze(0) # expand dim for batch
+
+    B,G,_ = gaus.shape
+    mu = gaus[:,:,:3].reshape(B,1,G,3)
+    eivec = gaus[:,:,3:12].reshape(B,1,G,3,3)
+    pi = gaus[:,:,12].reshape(B,1,G)
+    eival = gaus[:,:,13:16].reshape(B,1,G,3)
+    
+    return [mu, eivec, pi, eival]
+
+def get_vertex_color_from_gaus(vs, gaus, ignore_phi=True):
+    gmm = batch_gaus_to_gmms(gaus)
+    vs = nputil.np2th(vs)
+    if vs.ndim == 2:
+        vs = vs.unsqueeze(0)
+
+    _, supports = gm_log_likelihood_loss(gmm, vs, get_supports=True, ignore_phi=ignore_phi)
+    # supports = get_gm_support(gmm, vs, ignore_phi=True)
+    supports = supports[0]
+    label = supports.argmax(1)
+
+    cmap = plt.get_cmap("turbo")
+    func = lambda x : cmap(x / 16)[..., :3]
+    return func(label)
