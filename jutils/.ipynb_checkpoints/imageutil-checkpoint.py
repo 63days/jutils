@@ -7,19 +7,17 @@ from typing import List
 from pathlib import Path
 import cv2
 import textwrap
-import tempfile
-import subprocess
 
 kMinMargin = 10
 
-def images2mp4(images: List, save_path):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        for i, img in enumerate(images):
-            img.save(os.path.join(temp_dir, f"image{i:04d}.png"))
+class JuilImage(Image.Image):
+    def __init__(self):
+        super().__init__()
 
-        ffmpeg_cmd = f'ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -vb 20M {save_path}'
-        subprocess.run(ffmpeg_cmd, shell=True, check=True)
-
+    def draw_text(self, text, **kwargs):
+        return draw_text(self, text, **kwargs)
+    
+# Image.Image = JuilImage
 def stack_images_horizontally(images: List, save_path=None):
     widths, heights = list(zip(*(i.size for i in images)))
     total_width = sum(widths)
@@ -34,9 +32,7 @@ def stack_images_horizontally(images: List, save_path=None):
         new_im.save(save_path)
     return new_im
 
-def images2gif(images: List, save_path, optimize=True, duration=None, loop=0, disposal=2):
-    if duration is None:
-        duration = int(5000 / len(images))
+def images2gif(images: List, save_path, optimize=True, duration=40, loop=0, disposal=2):
     images[0].save(save_path, save_all=True, append_images=images[1:],
             optimize=optimize, duration=duration, loop=loop, disposal=disposal)
 
@@ -204,7 +200,7 @@ def create_image_table_tight_centering(
             img_left, img_top, img_right, img_bottom = get_bbox(in_img_files[row][col])
             img_h_center = 0.5 * (img_left + img_right)
             left = int(img_h_center - 0.5 * width)
-            cmd += " \( {} ".format(f'"{in_img_files[row][col]}"')
+            cmd += " \( {} ".format(in_img_files[row][col])
             cmd += "-gravity NorthWest -crop {}x{}+{}+{} +repage \) ".format(
                 width, row_height[row], left, row_top[row]
             )
@@ -272,7 +268,7 @@ def create_image_table_tight_centering_per_row(
             img_left, img_top, img_right, img_bottom = get_bbox(in_img_files[row][col])
             img_h_center = 0.5 * (img_left + img_right)
             left = int(img_h_center - 0.5 * width)
-            cmd += " \( {} ".format(f'"{in_img_files[row][col]}"')
+            cmd += " \( {} ".format(in_img_files[row][col])
             cmd += "-gravity NorthWest -crop {}x{}+{}+{} +repage \) ".format(
                 width, row_height[row], left, row_top[row]
             )
