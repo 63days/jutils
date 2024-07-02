@@ -17,7 +17,8 @@ def images2mp4(images: List, save_path):
         for i, img in enumerate(images):
             img.save(os.path.join(temp_dir, f"image{i:04d}.png"))
 
-        ffmpeg_cmd = f'ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -vb 20M {save_path}'
+        # ffmpeg_cmd = f'ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -vb 20M {save_path}'
+        ffmpeg_cmd = f'ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -c:v libx264 -preset slow  -profile:v high -level:v 4.0 -pix_fmt yuv420p -crf 22 -codec:a aac {save_path}'
         subprocess.run(ffmpeg_cmd, shell=True, check=True)
 
 def stack_images_horizontally(images: List, save_path=None):
@@ -432,12 +433,12 @@ def create_image_table_after_crop(
 
     # Resize the combined image if it is too large.
     # print(n_cols * width)
-    # if (n_cols * width) > max_total_width:
-        # cmd = "convert {0} -resize {1}x +repage {0}".format(
-            # out_img_file, max_total_width
-        # )
-        # print(cmd)
-        # os.system(cmd)
+    if (n_cols * width) > max_total_width:
+        cmd = "convert {0} -resize {1}x +repage {0}".format(
+            out_img_file, max_total_width
+        )
+        print(cmd)
+        os.system(cmd)
 
     print("Saved '{}'.".format(out_img_file))
 
