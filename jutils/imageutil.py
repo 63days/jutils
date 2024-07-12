@@ -12,6 +12,14 @@ import subprocess
 
 kMinMargin = 10
 
+def dir2images(dirpath: os.Pathlike, extensions=[".png", ".jpg", ".jpeg"]):
+    dirpath = Path(dirpath)
+    imgpaths = []
+    for extension in extensions:
+        imgpaths.extend(dirpath.glob(f"{extension}"))
+    imgpaths = sorted(imgpaths)
+    return imgpaths
+
 def images2mp4(images: List, save_path):
     with tempfile.TemporaryDirectory() as temp_dir:
         for i, img in enumerate(images):
