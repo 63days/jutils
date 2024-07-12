@@ -1,24 +1,27 @@
 #!/usr/bin/python
-import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFont
 import os
-import PIL
-from typing import List
-from pathlib import Path
-import cv2
-import textwrap
-import tempfile
 import subprocess
+import tempfile
+import textwrap
+from pathlib import Path
+from typing import List
+
+import cv2
+import numpy as np
+import PIL
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 kMinMargin = 10
 
-def dir2images(dirpath: os.Pathlike, extensions=[".png", ".jpg", ".jpeg"]):
+
+def dir2images(dirpath: os.PathLike, extensions=[".png", ".jpg", ".jpeg"]):
     dirpath = Path(dirpath)
     imgpaths = []
     for extension in extensions:
-        imgpaths.extend(dirpath.glob(f"{extension}"))
+        imgpaths.extend(dirpath.glob(f"*{extension}"))
     imgpaths = sorted(imgpaths)
     return imgpaths
+
 
 def images2mp4(images: List, save_path):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -26,8 +29,9 @@ def images2mp4(images: List, save_path):
             img.save(os.path.join(temp_dir, f"image{i:04d}.png"))
 
         # ffmpeg_cmd = f'ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -vb 20M {save_path}'
-        ffmpeg_cmd = f'ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -c:v libx264 -preset slow  -profile:v high -level:v 4.0 -pix_fmt yuv420p -crf 22 -codec:a aac {save_path}'
+        ffmpeg_cmd = f"ffmpeg -framerate 24 -i {temp_dir}/image%04d.png -c:v libx264 -preset slow  -profile:v high -level:v 4.0 -pix_fmt yuv420p -crf 22 -codec:a aac {save_path}"
         subprocess.run(ffmpeg_cmd, shell=True, check=True)
+
 
 def stack_images_horizontally(images: List, save_path=None):
     widths, heights = list(zip(*(i.size for i in images)))
@@ -43,11 +47,22 @@ def stack_images_horizontally(images: List, save_path=None):
         new_im.save(save_path)
     return new_im
 
-def images2gif(images: List, save_path, optimize=True, duration=None, loop=0, disposal=2):
+
+def images2gif(
+    images: List, save_path, optimize=True, duration=None, loop=0, disposal=2
+):
     if duration is None:
         duration = int(5000 / len(images))
-    images[0].save(save_path, save_all=True, append_images=images[1:],
-            optimize=optimize, duration=duration, loop=loop, disposal=disposal)
+    images[0].save(
+        save_path,
+        save_all=True,
+        append_images=images[1:],
+        optimize=optimize,
+        duration=duration,
+        loop=loop,
+        disposal=disposal,
+    )
+
 
 def stack_images_vertically(images: List, save_path=None):
     widths, heights = list(zip(*(i.size for i in images)))
@@ -73,7 +88,11 @@ def merge_images(images: List):
 
 
 def draw_text(
-    image: PIL.Image, text: str, font_size=None, font_color=(0, 0, 0), max_seq_length=100
+    image: PIL.Image,
+    text: str,
+    font_size=None,
+    font_color=(0, 0, 0),
+    max_seq_length=100,
 ):
     W, H = image.size
     S = max(W, H)
@@ -90,11 +109,13 @@ def draw_text(
     draw.text((max((W - w) / 2, 0), 0), text_wrapped, font=font, fill=font_color)
     return new_im
 
+
 def to_white(img):
     new_img = Image.new("RGBA", img.size, "WHITE")
     new_img.paste(img, (0, 0), img)
     new_img.convert("RGB")
     return new_img
+
 
 def get_bbox(in_file, fuzz=17.5):
     im = Image.open(in_file)
@@ -366,8 +387,18 @@ def create_image_table_tight_centering_per_col(
 
     return width, row_height
 
+
 def create_image_table_after_crop(
-    in_img_files, out_img_file, lbox=None, tbox=None, rbox=None, dbox=None, max_total_width=2560, draw_col_lines=[], transpose=False, verbose=False,
+    in_img_files,
+    out_img_file,
+    lbox=None,
+    tbox=None,
+    rbox=None,
+    dbox=None,
+    max_total_width=2560,
+    draw_col_lines=[],
+    transpose=False,
+    verbose=False,
     line_multi=None,
 ):
     out_img_file = str(out_img_file)
@@ -452,19 +483,20 @@ def create_image_table_after_crop(
 
     return width, row_height
 
+
 def make_2dgrid(input_list, num_rows=None, num_cols=None):
     # if num_rows * num_cols != len(input_list):
-        # raise Warning("Number of rows and columns do not match the length of the input list.")
-    
+    # raise Warning("Number of rows and columns do not match the length of the input list.")
+
     if num_rows is None and num_cols is not None:
         num_rows = len(input_list) // num_cols + 1
     output_list = []
     for i in range(num_rows):
         row = []
         for j in range(num_cols):
-            if i * num_cols + j >= len(input_list): break
+            if i * num_cols + j >= len(input_list):
+                break
             row.append(input_list[i * num_cols + j])
         output_list.append(row)
 
     return output_list
-
