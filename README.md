@@ -26,7 +26,7 @@ img.save("render.png")
 from jutils import imageutil
 
 img_grid = [[img1, img2],
-				    [img3, img4]]
+            [img3, img4]]
 
 merged_img = imageutil.merge_images(img_grid)
 merged_img.save("merged.png")
